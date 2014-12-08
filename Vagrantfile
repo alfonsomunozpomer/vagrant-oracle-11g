@@ -20,6 +20,33 @@ Vagrant.configure("2") do |config|
                   "--natdnshostresolver1", "on"]
   end
 
+  # CREATE SECONDARY DRIVE
+  config.vm.provider :virtualbox do |virtualbox|
+    file_to_disk = File.realpath( "." ).to_s + "/#{config.vm.hostname}_disk2.vdi"
+    if ARGV[0] == "up" && ! File.exist?(file_to_disk) 
+
+      disk_size = 30 # Amount of space (GB) to extend the VM with
+      puts "Creating #{disk_size}GB disk #{file_to_disk}."
+      virtualbox.customize [
+          'createhd', 
+          '--filename', file_to_disk, 
+          '--format', 'VDI', 
+          '--size', (disk_size * 1024)
+          ] 
+      virtualbox.customize [
+          'storageattach', :id, 
+          '--storagectl', 'SATA', 
+          '--port', 1, '--device', 0, 
+          '--type', 'hdd', '--medium', 
+          file_to_disk
+          ]
+
+      config.ssh.pty = true # Ensure that we can execute the script
+    end
+  end
+
+  config.vm.provision "shell", path: "add_second_disk.sh"
+
   # set timezone
   config.vm.provision :shell, :inline => "sudo rm /etc/localtime && sudo ln -s /usr/share/zoneinfo/GB /etc/localtime"
 
